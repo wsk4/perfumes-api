@@ -19,6 +19,12 @@ app.get('/perfumes', (req, res) => {
     result = result.filter(p => p.category === category);
   }
 
+  if (search && search.trim() !== '') {
+    result = result.filter(p => 
+      p.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
   
   if (sort === 'price_asc') {
     result.sort((a, b) => a.price - b.price);
