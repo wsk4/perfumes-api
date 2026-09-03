@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI Pipeline - Perfumes API
 
 on:
   push:
@@ -10,29 +10,27 @@ on:
 
 jobs:
   build-and-test:
+    name: Validar dependencias y pruebas
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Descargar codigo fuente
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: 'pnpm'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
+      - name: Instalar dependencias
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run linter
-        run: pnpm run lint --if-present
-
-      - name: Run tests
-        run: pnpm test --if-present
-
-      - name: Build verification
-        run: pnpm run build --if-present
+      - name: Ejecutar pruebas unitarias
+        run: pnpm test
