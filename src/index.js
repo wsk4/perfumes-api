@@ -11,20 +11,22 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/perfumes', (req, res) => {
-    const { category, sort } = req.query;
-    let result = [...perfumes];
+  const { category, sort } = req.query;
+  let result = [...perfumes];
 
-    if (category) {
-        result = result.filter(p => p.category === category);
-    }
+  
+  if (category && category.trim() !== '') {
+    result = result.filter(p => p.category === category);
+  }
 
-    if (sort === 'price_asc') {
-        result.sort((a, b) => a.price - b.price);
-    } else if (sort === 'price_desc') {
-        result.sort((a, b) => b.price - a.price);
-    }
+  
+  if (sort === 'price_asc') {
+    result.sort((a, b) => a.price - b.price);
+  } else if (sort === 'price_desc') {
+    result.sort((a, b) => b.price - a.price);
+  }
 
-    res.json(result);
+  res.json(result);
 });
 
 app.get('/perfumes/:id', (req, res) => {
