@@ -36,9 +36,13 @@ app.get('/perfumes', (req, res) => {
 });
 
 app.get('/perfumes/:id', (req, res) => {
-    const perfume = getPerfumeById(Number(req.params.id));
-    if (!perfume) return res.status(404).json({ error: 'Perfume not found' });
-    res.json(perfume);
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid ID format' });
+  }
+  const perfume = getPerfumeById(id);
+  if (!perfume) return res.status(404).json({ error: 'Perfume not found' });
+  res.json(perfume);
 });
 
 app.post('/perfumes', (req, res) => {
