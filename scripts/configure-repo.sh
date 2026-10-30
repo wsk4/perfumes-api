@@ -44,7 +44,7 @@ gh api -X PUT "repos/${REPO}/actions/permissions/workflow" \
   -f default_workflow_permissions=write \
   -F can_approve_pull_request_reviews=true >/dev/null
 
-if [ -n "${SNYK_TOKEN:-}" ]; then
+if [[ -n "${SNYK_TOKEN:-}" ]]; then
   echo "==> Guardando secreto SNYK_TOKEN"
   printf '%s' "${SNYK_TOKEN}" | gh secret set SNYK_TOKEN --repo "${REPO}" >/dev/null
 else

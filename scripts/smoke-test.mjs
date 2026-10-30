@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 /**
  * Smoke test del despliegue. Se ejecuta contra el gateway (Nginx) del
- * entorno levantado con Docker Compose, o contra cualquier URL mediante BASE_URL.
+ * entorno levantado con Docker Compose. El gateway no se expone a una URL
+ * configurable para que esta verificación nunca ejecute solicitudes arbitrarias.
  */
-const configuredBaseUrl = process.env.BASE_URL || 'http://localhost:3000';
-const baseUrl = new URL(configuredBaseUrl);
-if (!['http:', 'https:'].includes(baseUrl.protocol)) {
-  throw new Error('BASE_URL debe usar HTTP o HTTPS');
-}
-const BASE_URL = baseUrl.origin;
+const BASE_URL = 'http://localhost:3000';
 
 const apiUrl = (path) => new URL(path, BASE_URL).toString();
 

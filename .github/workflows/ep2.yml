@@ -125,7 +125,7 @@ jobs:
             echo "::warning title=Snyk omitido::SNYK_TOKEN no está configurado. Se mantienen activos pnpm audit y Trivy."
             exit 0
           fi
-          npm install -g snyk@1.1308.3
+          npm install -g --ignore-scripts snyk@1.1308.3
           snyk test --prod --severity-threshold=high --all-projects
 
           # Snyk Code (SAST) requiere que la organización lo tenga habilitado.
