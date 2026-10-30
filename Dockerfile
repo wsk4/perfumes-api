@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Etapa 1: dependencias de producción
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS dependencies
+FROM node:25-alpine AS dependencies
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN pnpm install --prod --frozen-lockfile
 # ---------------------------------------------------------------------------
 # Etapa 2: imagen final mínima, sin root y con healthcheck
 # ---------------------------------------------------------------------------
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 
 ARG VERSION=dev
 ARG COMMIT=unknown
