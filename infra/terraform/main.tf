@@ -91,6 +91,7 @@ resource "aws_instance" "perfumes_api" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = var.instance_type
   subnet_id              = data.aws_subnets.default.ids[0]
+  associate_public_ip_address = false
   vpc_security_group_ids = [aws_security_group.perfumes_api.id]
   iam_instance_profile   = aws_iam_instance_profile.ssm.name
 

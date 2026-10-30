@@ -8,7 +8,7 @@ FROM node:24-alpine AS dependencies
 WORKDIR /app
 
 # Versión fijada para builds reproducibles
-RUN npm install -g pnpm@11.25.0
+RUN npm install -g --ignore-scripts pnpm@11.25.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 

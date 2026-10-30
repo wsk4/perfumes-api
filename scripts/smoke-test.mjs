@@ -3,7 +3,14 @@
  * Smoke test del despliegue. Se ejecuta contra el gateway (Nginx) del
  * entorno levantado con Docker Compose, o contra cualquier URL mediante BASE_URL.
  */
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const configuredBaseUrl = process.env.BASE_URL || 'http://localhost:3000';
+const baseUrl = new URL(configuredBaseUrl);
+if (!['http:', 'https:'].includes(baseUrl.protocol)) {
+  throw new Error('BASE_URL debe usar HTTP o HTTPS');
+}
+const BASE_URL = baseUrl.origin;
+
+const apiUrl = (path) => new URL(path, BASE_URL).toString();
 
 const assert = (condition, message) => {
   if (!condition) {
@@ -12,7 +19,7 @@ const assert = (condition, message) => {
 };
 
 const getJson = async (path, expectedStatus = 200) => {
-  const res = await fetch(`${BASE_URL}${path}`, { signal: AbortSignal.timeout(10000) });
+  const res = await fetch(apiUrl(path), { signal: AbortSignal.timeout(10000) });
   const body = await res.json().catch(() => null);
   assert(res.status === expectedStatus, `${path} -> ${res.status} (esperado ${expectedStatus})`);
   return { res, body };
@@ -23,7 +30,7 @@ const main = async () => {
   let healthy = false;
   for (let attempt = 1; attempt <= 30 && !healthy; attempt += 1) {
     try {
-      const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(3000) });
+      const res = await fetch(apiUrl('/health'), { signal: AbortSignal.timeout(3000) });
       healthy = res.ok;
     } catch {
       healthy = false;
@@ -38,7 +45,7 @@ const main = async () => {
 
   const all = await getJson('/perfumes');
   assert(Array.isArray(all.body) && all.body.length > 0, 'el catálogo debe ser un arreglo no vacío');
-  console.log(`OK  GET /perfumes (${all.body.length} perfumes)`);
+  console.log('OK  GET /perfumes');
 
   const filtered = await getJson('/perfumes?category=masculino');
   assert(filtered.body.every((p) => p.category === 'masculino'), 'el filtro por categoría no se aplicó');
@@ -68,7 +75,7 @@ const main = async () => {
   assert(missing.body.error === 'Not found', 'la ruta desconocida no devolvió 404');
   console.log('OK  GET /no-existe -> 404');
 
-  const created = await fetch(`${BASE_URL}/perfumes`, {
+  const created = await fetch(apiUrl('/perfumes'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -89,7 +96,7 @@ const main = async () => {
   assert(createdItem.body.id === createdBody.id, 'el perfume creado no se puede leer después (store compartido)');
   console.log('OK  GET /perfumes/:id del item creado (store compartido)');
 
-  const response = await fetch(`${BASE_URL}/health`);
+  const response = await fetch(apiUrl('/health'));
   assert(response.headers.get('x-content-type-options') === 'nosniff', 'faltan cabeceras de seguridad del gateway');
   console.log('OK  cabeceras de seguridad del gateway');
 
