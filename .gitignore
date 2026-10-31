@@ -3,3 +3,11 @@ node_modules/
 .DS_Store
 coverage/
 *.log
+*.tar
+.eslintcache
+pnpm-debug.log*
+
+# Terraform
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
