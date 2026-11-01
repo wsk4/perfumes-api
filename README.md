@@ -317,13 +317,13 @@ La IA **no** se usó para redactar conclusiones, justificaciones técnicas ni re
 > ⚠️ Cada integrante debe completar su reflexión personal (sin IA): qué aprendió, qué aportó al proyecto y qué dificultad enfrentó.
 
 ### Integrante 1 — Matias Gonzalez V. (@wsk4)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ### Integrante 2 — Renato Barriga P. (@Moonlighpoio)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ### Integrante 3 — Cristobal Veliz L. (@Veliz1232)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ---
 
