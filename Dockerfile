@@ -23,7 +23,7 @@ ARG VERSION=dev
 ARG COMMIT=unknown
 
 LABEL org.opencontainers.image.title="perfumes-api" \
-      org.opencontainers.image.description="API de catálogo de perfumes (EP2 DevOps)" \
+      org.opencontainers.image.description="API de catálogo de perfumes (EP3 DevOps)" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.source="https://github.com/Moonlighpoio/perfumes-api" \
@@ -36,7 +36,9 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # La imagen final solo necesita el runtime de Node, no npm/npx/corepack.
-RUN addgroup -S appgroup && \
+# apk upgrade aplica los parches de seguridad disponibles (gate de Trivy).
+RUN apk upgrade --no-cache && \
+    addgroup -S appgroup && \
     adduser -S appuser -G appgroup && \
     rm -rf /usr/local/lib/node_modules/npm \
            /usr/local/bin/npm \
