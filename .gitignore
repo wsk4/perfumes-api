@@ -7,6 +7,10 @@ coverage/
 .eslintcache
 pnpm-debug.log*
 
+# Herramientas locales (scripts/k8s-local.sh)
+istio-*/
+actionlint
+
 # Terraform
 infra/terraform/.terraform/
 *.tfstate

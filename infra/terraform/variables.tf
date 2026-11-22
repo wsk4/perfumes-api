@@ -12,6 +12,6 @@ variable "instance_type" {
 
 variable "allowed_cidr" {
   type        = string
-  description = "CIDR con acceso al puerto 3000 de la API."
+  description = "CIDR con acceso al puerto 80 (Istio ingress gateway)."
   default     = "0.0.0.0/0"
 }

@@ -27,10 +27,12 @@ fi
 
 echo "==> Configurando repositorio ${REPO}"
 gh repo edit "$REPO" \
-  --description "Perfumes API - EP2 DevOps: CI/CD, Docker, seguridad y orquestación" \
+  --description "Perfumes API - EP3 DevOps: CI/CD, Kubernetes, Istio, observabilidad y compliance" \
   --add-topic devops \
   --add-topic ci-cd \
-  --add-topic docker \
+  --add-topic kubernetes \
+  --add-topic istio \
+  --add-topic observability \
   --add-topic github-actions \
   --add-topic express \
   --add-topic nodejs

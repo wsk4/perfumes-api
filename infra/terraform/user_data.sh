@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 dnf update -y
-dnf install -y docker
+dnf install -y docker git tar gzip
 
 systemctl enable --now docker
 usermod -aG docker ec2-user
