@@ -4,6 +4,10 @@ import { getAllPerfumes, getPerfumeById, createPerfume } from './perfumes.js';
 const app = express();
 
 app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('x-content-type-options', 'nosniff');
+    next();
+});
 app.use(express.json({ limit: '10kb' }));
 
 // Estado del servicio (usado por Docker, Compose y el pipeline)
