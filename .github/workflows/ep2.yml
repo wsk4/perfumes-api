@@ -314,6 +314,7 @@ jobs:
         if: failure()
         run: |
           kubectl -n perfumes logs -l app=perfumes-api --all-containers --tail=100 || true
+          kubectl -n perfumes logs -l app=redis --all-containers --tail=100 || true
           kubectl -n perfumes describe pods || true
           kubectl -n istio-system logs deploy/istio-ingressgateway --tail=50 || true
 

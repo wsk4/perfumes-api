@@ -30,7 +30,7 @@ spec:
   rules:
     - from:
         - source:
-            namespaces: ["istio-system", "monitoring"]
+            namespaces: ["istio-system"]
     - from:
         - source:
             principals: ["cluster.local/ns/perfumes/sa/*"]

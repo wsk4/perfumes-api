@@ -57,6 +57,8 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsUser: 100
+            runAsGroup: 101
             capabilities:
               drop: ["ALL"]
           readinessProbe:
@@ -100,6 +102,7 @@ spec:
       containers:
         - name: redis
           image: redis:7.4-alpine
+          command: ["redis-server"]
           args: ["--appendonly", "no", "--save", ""]
           ports:
             - name: redis
