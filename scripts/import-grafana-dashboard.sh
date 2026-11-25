@@ -3,7 +3,7 @@
 # Uso: bash scripts/import-grafana-dashboard.sh [comando-kubectl]
 set -euo pipefail
 
-if [ "${1:-kubectl}" = "k3s" ]; then
+if [[ "${1:-kubectl}" == "k3s" ]]; then
   KUBECTL=(k3s kubectl)
 else
   KUBECTL=(kubectl)
@@ -11,7 +11,7 @@ fi
 DASHBOARD_FILE="observability/grafana/perfumes-ep3-dashboard.json"
 GRAFANA_PORT="${GRAFANA_PORT:-3001}"
 
-test -f "${DASHBOARD_FILE}"
+[[ -f "${DASHBOARD_FILE}" ]]
 
 cleanup() {
   kill "${GRAFANA_PF_PID:-}" 2>/dev/null || true
