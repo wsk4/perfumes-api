@@ -218,7 +218,7 @@ flowchart LR
 | Etapa | Evidencia |
 |---|---|
 | Código | Commit `GITHUB_SHA` |
-| Imagen | `ghcr.io/moonlighpoio/perfumes-api:<SHA>` (tag inmutable, publicado en GHCR) |
+| Imagen | `ghcr.io/wsk4/perfumes-api:<SHA>` (tag inmutable, publicado en GHCR) |
 | Artefacto | `image.tar` publicado en el run (fuente del despliegue) |
 | Entorno | `staging` (develop) / `production` (main) con historial de deployments |
 | Verificación | Healthcheck + smoke tests contra el gateway |
@@ -234,7 +234,7 @@ Estos pasos se ejecutan **una vez** y requieren permisos de administrador:
 
 ```bash
 gh auth login
-REPO=Moonlighpoio/perfumes-api bash scripts/configure-repo.sh
+REPO=wsk4/perfumes-api bash scripts/configure-repo.sh
 ```
 
 El script:
@@ -247,7 +247,7 @@ El script:
 Para configurar Snyk manualmente:
 
 ```bash
-gh secret set SNYK_TOKEN --repo Moonlighpoio/perfumes-api
+gh secret set SNYK_TOKEN --repo wsk4/perfumes-api
 ```
 
 ---
@@ -260,27 +260,27 @@ El repositorio incluye infraestructura como código para desplegar en una instan
 - `infra/terraform/`: crea EC2 (Amazon Linux 2023), Security Group (puerto 80 para Istio), Elastic IP, rol IAM con `AmazonSSMManagedInstanceCore` y bootstrap de Docker/Git.
 - El job `deploy-aws` instala **k3s** (sin Traefik) e **Istio**, aplica `src/k8s/` e instala Prometheus/Grafana/Kiali mediante `scripts/deploy-ec2.sh`.
 
-### Instancia creada y funcionando
-- **IP elástica:** `52.6.32.64`
-- **URL de la app:** http://52.6.32.64
-- **Instance ID:** `i-053abd546e40c1517`
-- **Security Group:** `sg-01394c162c942339f` (puerto 80 abierto)
-- **Región:** `us-east-1`
-- **Estado:** ✅ Infraestructura base desplegada (el cluster k3s + Istio se instala en el pipeline)
+### Requisitos verificables antes del despliegue
+
+La instancia debe estar `Running`, con los dos status checks aprobados, una Elastic IP,
+el rol de instancia `AmazonSSMManagedInstanceCore` y conectividad de salida. El workflow
+no se habilita hasta que esos requisitos estén comprobados; así se evita registrar como
+"desplegado" un entorno que todavía no puede recibir comandos SSM.
 
 ### Pasos restantes
-1. Adjunta el rol IAM `AmazonSSMManagedInstanceCore` a la instancia (si no lo hiciste).
-2. Crea el rol IAM para GitHub OIDC y copia su ARN.
+1. Adjunta el rol IAM `AmazonSSMManagedInstanceCore` a la instancia.
+2. Crea el rol IAM para GitHub OIDC y copia su ARN. El workflow usa credenciales
+   temporales OIDC; no requiere secretos AWS de larga duración.
 3. En GitHub → Settings → Variables, configura:
    - `ENABLE_AWS_DEPLOY` = `true`
    - `AWS_REGION` = `us-east-1`
-   - `AWS_ROLE_ARN` = `arn:aws:iam::339713132870:role/github-deploy`
-   - `EC2_INSTANCE_ID` = `i-053abd546e40c1517`
+   - `AWS_ROLE_ARN` = `arn:aws:iam::<cuenta>:role/perfumes-api-github-deploy`
+   - `EC2_INSTANCE_ID` = `<id-de-la-instancia-ec2>`
 4. Dispara el workflow manualmente o haz un push a `main`.
-5. La app quedará disponible en: http://52.6.32.64
+5. Verifica `GET /health` en la Elastic IP y conserva la URL como evidencia de la entrega.
 
 ### Rol IAM para GitHub OIDC
-El rol debe tener una trust policy para `token.actions.githubusercontent.com` con la condición `repo:Moonlighpoio/perfumes-api:ref:refs/heads/main` y permisos `ssm:SendCommand`, `ssm:GetCommandInvocation`, `ssm:DescribeInstanceInformation`.
+El rol debe tener una trust policy para `token.actions.githubusercontent.com` con la condición `repo:wsk4/perfumes-api:ref:refs/heads/main` y permisos `ssm:SendCommand`, `ssm:GetCommandInvocation`, `ssm:DescribeInstanceInformation`.
 
 ## 🌿 Estrategia de ramificación (GitFlow)
 

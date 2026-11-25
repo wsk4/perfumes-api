@@ -8,7 +8,7 @@ set -euo pipefail
 
 IMAGE="${1:?uso: deploy-ec2.sh <imagen>}"
 BRANCH="${BRANCH:-main}"
-REPO="${REPO:-https://github.com/Moonlighpoio/perfumes-api.git}"
+REPO="${REPO:-https://github.com/wsk4/perfumes-api.git}"
 ISTIO_VERSION="${ISTIO_VERSION:-1.24.4}"
 APP_DIR="/opt/perfumes-api"
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml

@@ -5,14 +5,14 @@
 #
 # Uso:
 #   gh auth login
-#   REPO=Moonlighpoio/perfumes-api bash scripts/configure-repo.sh
+#   REPO=wsk4/perfumes-api bash scripts/configure-repo.sh
 #
 # Opcional:
-#   SNYK_TOKEN=xxxx REPO=Moonlighpoio/perfumes-api bash scripts/configure-repo.sh
+#   SNYK_TOKEN=xxxx REPO=wsk4/perfumes-api bash scripts/configure-repo.sh
 #
 set -euo pipefail
 
-REPO="${REPO:-Moonlighpoio/perfumes-api}"
+REPO="${REPO:-wsk4/perfumes-api}"
 CHECKS='["Calidad y pruebas", "Seguridad", "Imagen Docker"]'
 
 if ! command -v gh >/dev/null 2>&1; then

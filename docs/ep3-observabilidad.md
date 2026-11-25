@@ -61,8 +61,9 @@ Qué ocurre en cada etapa:
    Prometheus/Grafana/Kiali, ejecuta `istioctl analyze` y el smoke test a través del
    ingress gateway. Cualquier fallo detiene el pipeline.
 5. **release**: solo en `main`, crea el tag `vX.Y.Z`.
-6. **deploy-aws**: solo en `main` y con `ENABLE_AWS_DEPLOY=true`, despliega en EC2
-   con k3s + Istio mediante SSM (sin abrir SSH).
+6. **deploy-aws**: solo en `main` y con `ENABLE_AWS_DEPLOY=true`, obtiene credenciales
+   temporales mediante GitHub OIDC y despliega en EC2 con k3s + Istio mediante SSM
+   (sin abrir SSH ni guardar claves AWS en GitHub).
 
 ## 4. Métricas y dashboards (IE3)
 
