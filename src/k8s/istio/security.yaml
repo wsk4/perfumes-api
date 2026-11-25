@@ -1,0 +1,49 @@
+# Políticas de cumplimiento y seguridad de la malla (IE5 / IE6)
+#
+# - mTLS STRICT: todo el tráfico entre pods viaja cifrado y autenticado.
+# - Default-deny: solo el ingress gateway y Prometheus pueden entrar a la API.
+# - Telemetry: access logs de Envoy para auditoría y trazabilidad.
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: perfumes
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: default-deny
+  namespace: perfumes
+spec:
+  {}
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-and-monitoring
+  namespace: perfumes
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["istio-system"]
+    - from:
+        - source:
+            principals: ["cluster.local/ns/perfumes/sa/*"]
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system
+spec:
+  accessLogging:
+    - providers:
+        - name: envoy
+  metrics:
+    - providers:
+        - name: prometheus

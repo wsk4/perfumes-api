@@ -1,6 +1,6 @@
-# 🎯 Perfumes API — EP2 DevOps
+# 🎯 Perfumes API — EP3 DevOps
 
-Microservicio de catálogo de perfumes (Node.js + Express) con pipeline CI/CD completo, contenedores, análisis de seguridad, despliegue simulado y orquestación con Docker Compose.
+Microservicio de catálogo de perfumes (Node.js + Express) con pipeline CI/CD completo, contenedores, análisis de seguridad, despliegue en Kubernetes con Istio, observabilidad (Prometheus, Grafana, Kiali) y políticas de cumplimiento automatizadas.
 
 ![CI/CD develop](https://github.com/Moonlighpoio/perfumes-api/actions/workflows/ep2.yml/badge.svg?branch=develop)
 ![CI/CD main](https://github.com/Moonlighpoio/perfumes-api/actions/workflows/ep2.yml/badge.svg?branch=main)
@@ -12,7 +12,7 @@ Microservicio de catálogo de perfumes (Node.js + Express) con pipeline CI/CD co
 
 ## 📌 Descripción
 
-API REST que permite listar, filtrar, buscar, ordenar y crear perfumes. El objetivo del EP2 es automatizar el ciclo de vida del microservicio: **código → pruebas → análisis de seguridad → imagen → despliegue → verificación**, con trazabilidad desde el commit hasta el entorno desplegado.
+API REST que permite listar, filtrar, buscar, ordenar y crear perfumes. El objetivo del EP3 es automatizar el ciclo de vida del microservicio: **código → pruebas → análisis de seguridad → imagen → despliegue → verificación**, con trazabilidad desde el commit hasta el entorno desplegado.
 
 | Componente | Tecnología |
 |---|---|
@@ -21,9 +21,11 @@ API REST que permite listar, filtrar, buscar, ordenar y crear perfumes. El objet
 | Pruebas | Jest + Supertest |
 | Calidad | ESLint + umbral de cobertura |
 | Contenedores | Docker multi-stage (non-root) |
-| Orquestación | Docker Compose + 3 réplicas + Nginx + Redis |
+| Orquestación | Kubernetes (k3s en EC2, kind en CI) + Istio |
+| Observabilidad | Prometheus + Grafana + Kiali |
+| Seguridad de malla | mTLS STRICT + AuthorizationPolicy (default-deny) |
 | CI/CD | GitHub Actions |
-| Seguridad | Dependabot + `pnpm audit` + Snyk + Trivy + CodeQL |
+| Seguridad | Dependabot + `pnpm audit` + Snyk + Trivy + CodeQL + `istioctl analyze` |
 | Registro de imágenes | GitHub Container Registry (GHCR) |
 
 ---
@@ -32,23 +34,25 @@ API REST que permite listar, filtrar, buscar, ordenar y crear perfumes. El objet
 
 ```mermaid
 flowchart LR
-    U[Cliente] -->|:3000| N[Nginx Gateway<br/>1 contenedor]
-    N -->|balanceo| A1[API réplica 1]
-    N --> A2[API réplica 2]
-    N --> A3[API réplica 3]
-    A1 & A2 & A3 --> R[(Redis<br/>store compartido)]
-    subgraph Red interna backend
-      N
-      A1
-      A2
-      A3
-    end
+    U[Cliente] -->|:80| IG[Istio Ingress Gateway]
+    IG --> VS[VirtualService]
+    VS --> A1[API pod 1 + Envoy]
+    VS --> A2[API pod 2 + Envoy]
+    VS --> A3[API pod 3 + Envoy]
+    A1 & A2 & A3 -->|mTLS STRICT| R[(Redis)]
+    A1 & A2 & A3 -.->|métricas| P[Prometheus]
+    IG -.->|métricas| P
+    P --> G[Grafana]
+    P --> K[Kiali]
 ```
 
-- Solo el **gateway Nginx** publica el puerto `3000`.
-- La **API** corre con 3 réplicas, sin puertos publicados, en una red interna.
-- El catálogo se persiste en **Redis compartido**: todas las réplicas leen y escriben el mismo store, garantizando consistencia entre clientes y réplicas.
-- Cada contenedor tiene healthcheck, límites de CPU/memoria, filesystem de solo lectura, `cap_drop: ALL` y `no-new-privileges`.
+- **Istio** es el punto de entrada y gestiona el tráfico, el cifrado mTLS y la telemetría.
+- La **API** corre con 3 réplicas (pods) y cada una lleva un sidecar Envoy inyectado por Istio.
+- El catálogo se persiste en **Redis**, accedido solo dentro de la malla.
+- Cada pod tiene probes, límites de CPU/memoria, filesystem de solo lectura y `cap_drop: ALL`.
+- **Prometheus** recolecta métricas de Envoy, **Grafana** las grafica y **Kiali** muestra la topología.
+
+> Detalle completo de la integración y las decisiones técnicas: [`docs/ep3-observabilidad.md`](docs/ep3-observabilidad.md).
 
 ---
 
@@ -105,7 +109,7 @@ docker build -t perfumes-api:local .
 docker run --rm -p 3000:3000 perfumes-api:local
 ```
 
-### Con Docker Compose (orquestado)
+### Con Docker Compose
 
 ```bash
 docker compose up -d --build --wait
@@ -115,6 +119,25 @@ docker compose down -v
 ```
 
 El gateway queda disponible en `http://localhost:3000`.
+
+### Con Kubernetes + Istio (EP3)
+
+```bash
+docker build -t perfumes-api:local .
+bash scripts/k8s-local.sh perfumes-api:local
+```
+
+El script crea un cluster `kind`, instala Istio, despliega la API y Redis, instala
+Prometheus/Grafana/Kiali, valida la malla con `istioctl analyze` y ejecuta el smoke test
+a través del ingress gateway (`http://localhost:3000`).
+
+Dashboards:
+
+```bash
+istioctl dashboard kiali
+istioctl dashboard grafana
+istioctl dashboard prometheus
+```
 
 ---
 
@@ -126,11 +149,12 @@ Se ejecuta en **push a `develop`/`main`**, **pull requests** y manualmente (`wor
 
 | # | Job | Qué hace | Gate |
 |---|---|---|---|
-| 1 | **Calidad y pruebas** | `pnpm lint`, Jest + Supertest, cobertura | Falla si lint o tests fallan, o si la cobertura baja de 90% |
+| 1 | **Calidad y pruebas** | `pnpm lint`, Jest + Supertest, cobertura, métricas en Step Summary | Falla si lint o tests fallan, o si la cobertura baja de 90% |
 | 2 | **Seguridad** | `pnpm audit --prod`, Snyk Open Source, Snyk Code (SAST), CodeQL | Falla con vulnerabilidades altas/críticas |
 | 3 | **Imagen Docker** | Build multi-stage, escaneo Trivy, artefacto, push a GHCR | Falla si Trivy detecta HIGH/CRITICAL corregibles |
-| 4 | **Despliegue** | Compose con 3 réplicas + Nginx, healthchecks y smoke tests | Falla si el entorno no responde o no hay 3 réplicas |
+| 4 | **Despliegue K8s + Istio** | Cluster kind, Istio, 3 réplicas, Prometheus/Grafana/Kiali, `istioctl analyze` y smoke tests | Falla si la malla es inválida o el entorno no responde |
 | 5 | **Release** (solo `main`) | Crea tag y release `vX.Y.Z` | Trazabilidad versión → commit |
+| 6 | **Despliegue EC2** (opcional) | k3s + Istio en EC2 vía SSM | Falla si el rollout o `istioctl analyze` fallan |
 
 ### Flujo
 
@@ -139,13 +163,14 @@ flowchart LR
     C[Push / PR] --> Q[Calidad y pruebas]
     Q --> S[Seguridad]
     S --> D[Build + Trivy + GHCR]
-    D --> E[Despliegue Compose]
+    D --> E[Despliegue K8s + Istio]
     E --> R[Release en main]
+    R --> A[Despliegue EC2 opcional]
 ```
 
 ### Política de calidad (IE2)
 
-- **30 pruebas automatizadas** con Jest + Supertest sobre la app real.
+- **32 pruebas automatizadas** con Jest + Supertest sobre la app real.
 - Cobertura mínima bloqueante: **90%** en statements, branches, functions y lines (`jest.config.js`).
 - ESLint con `no-undef` como error.
 - Smoke tests de integración contra el entorno desplegado (`scripts/smoke-test.mjs`).
@@ -163,22 +188,37 @@ flowchart LR
 
 > `SNYK_TOKEN` está configurado. Snyk Open Source y Snyk Code se ejecutan en cada pipeline; si no existiera el secreto, el pipeline seguiría funcionando con `pnpm audit` + Trivy y mostraría una advertencia.
 
-### Escalabilidad y orquestación (IE3 / IE5)
+### Escalabilidad y orquestación (IE2 / IE3)
 
-- **3 réplicas** de la API (`deploy.replicas: 3`) detrás de Nginx.
-- Balanceo con `upstream` de Nginx y afinidad por IP (`ip_hash`) sobre las 3 réplicas.
-- DNS interno de Docker con `resolver 127.0.0.11` para refrescar las IPs de las réplicas.
-- El catálogo se persiste en **Redis compartido**, por lo que todos los clientes ven el mismo estado aunque cambien de réplica.
-- Límites y reservas de CPU/memoria por servicio.
-- Healthchecks de API y gateway; `depends_on` con `condition: service_healthy`.
-- Red interna segmentada: la API no está expuesta directamente.
+- **3 réplicas** de la API como pods de Kubernetes, balanceadas por Istio (`ROUND_ROBIN`).
+- `DestinationRule` con `connectionPool` y `outlierDetection` (expulsa pods con 5xx).
+- El catálogo se persiste en **Redis compartido**, por lo que todos los clientes ven el mismo estado.
+- Límites y reservas de CPU/memoria por pod, probes de readiness/liveness y `RollingUpdate`.
+- Ingress único vía **Istio Gateway + VirtualService**; la API no está expuesta directamente.
+- Red segmentada y cifrada con **mTLS STRICT** (IE5).
+
+### Observabilidad (IE1 / IE3)
+
+- **Prometheus** recolecta métricas de Envoy/Istio (`istio_requests_total`, latencia, 5xx).
+- **Grafana** muestra CPU/memoria, requests y errores; **Kiali** muestra el grafo de servicios.
+- Logs de acceso de Envoy habilitados con el recurso `Telemetry` para auditoría.
+- **GitHub Actions Step Summary** publica tiempo de despliegue y cobertura de pruebas en cada run.
+- Sin instrumentar el código: la malla genera la telemetría de forma transparente.
+
+### Cumplimiento automatizado (IE5 / IE6)
+
+- `PeerAuthentication` en modo **STRICT**: todo el tráfico entre pods va cifrado.
+- `AuthorizationPolicy` **default-deny**: solo el ingress gateway y el monitoreo entran a la API.
+- `istioctl analyze` **bloqueante** en el job de despliegue: una mala configuración detiene el pipeline.
+- Trivy, `pnpm audit`, Snyk y cobertura ≥ 90% detienen el pipeline antes de desplegar.
+- Branch protection en `main` y `develop` con checks obligatorios (`scripts/configure-repo.sh`).
 
 ### Despliegue y trazabilidad (IE4)
 
 | Etapa | Evidencia |
 |---|---|
 | Código | Commit `GITHUB_SHA` |
-| Imagen | `ghcr.io/moonlighpoio/perfumes-api:<SHA>` (tag inmutable, publicado en GHCR) |
+| Imagen | `ghcr.io/wsk4/perfumes-api:<SHA>` (tag inmutable, publicado en GHCR) |
 | Artefacto | `image.tar` publicado en el run (fuente del despliegue) |
 | Entorno | `staging` (develop) / `production` (main) con historial de deployments |
 | Verificación | Healthcheck + smoke tests contra el gateway |
@@ -194,7 +234,7 @@ Estos pasos se ejecutan **una vez** y requieren permisos de administrador:
 
 ```bash
 gh auth login
-REPO=Moonlighpoio/perfumes-api bash scripts/configure-repo.sh
+REPO=wsk4/perfumes-api bash scripts/configure-repo.sh
 ```
 
 El script:
@@ -207,7 +247,7 @@ El script:
 Para configurar Snyk manualmente:
 
 ```bash
-gh secret set SNYK_TOKEN --repo Moonlighpoio/perfumes-api
+gh secret set SNYK_TOKEN --repo wsk4/perfumes-api
 ```
 
 ---
@@ -217,29 +257,30 @@ gh secret set SNYK_TOKEN --repo Moonlighpoio/perfumes-api
 El repositorio incluye infraestructura como código para desplegar en una instancia EC2 real usando **SSM** (sin abrir el puerto SSH).
 
 ### Infraestructura
-- `infra/terraform/`: crea EC2 (Amazon Linux 2023), Security Group (puerto 3000), Elastic IP, rol IAM con `AmazonSSMManagedInstanceCore` y bootstrap de Docker/Compose.
+- `infra/terraform/`: crea EC2 (Amazon Linux 2023), Security Group (puerto 80 para Istio), Elastic IP, rol IAM con `AmazonSSMManagedInstanceCore` y bootstrap de Docker/Git.
+- El job `deploy-aws` instala **k3s** (sin Traefik) e **Istio**, aplica `src/k8s/` e instala Prometheus/Grafana/Kiali mediante `scripts/deploy-ec2.sh`.
 
-### Instancia creada y funcionando
-- **IP elástica:** `52.6.32.64`
-- **URL de la app:** http://52.6.32.64:3000
-- **Instance ID:** `i-053abd546e40c1517`
-- **Security Group:** `sg-01394c162c942339f` (puerto 3000 abierto)
-- **Región:** `us-east-1`
-- **Estado:** ✅ Desplegado y funcionando (3 réplicas + Nginx + Redis)
+### Requisitos verificables antes del despliegue
+
+La instancia debe estar `Running`, con los dos status checks aprobados, una Elastic IP,
+el rol de instancia `AmazonSSMManagedInstanceCore` y conectividad de salida. El workflow
+no se habilita hasta que esos requisitos estén comprobados; así se evita registrar como
+"desplegado" un entorno que todavía no puede recibir comandos SSM.
 
 ### Pasos restantes
-1. Adjunta el rol IAM `AmazonSSMManagedInstanceCore` a la instancia (si no lo hiciste).
-2. Crea el rol IAM para GitHub OIDC y copia su ARN.
+1. Adjunta el rol IAM `AmazonSSMManagedInstanceCore` a la instancia.
+2. Crea el rol IAM para GitHub OIDC y copia su ARN. El workflow usa credenciales
+   temporales OIDC; no requiere secretos AWS de larga duración.
 3. En GitHub → Settings → Variables, configura:
    - `ENABLE_AWS_DEPLOY` = `true`
    - `AWS_REGION` = `us-east-1`
-   - `AWS_ROLE_ARN` = `arn:aws:iam::339713132870:role/github-deploy`
-   - `EC2_INSTANCE_ID` = `i-053abd546e40c1517`
+   - `AWS_ROLE_ARN` = `arn:aws:iam::<cuenta>:role/perfumes-api-github-deploy`
+   - `EC2_INSTANCE_ID` = `<id-de-la-instancia-ec2>`
 4. Dispara el workflow manualmente o haz un push a `main`.
-5. La app quedará disponible en: http://52.6.32.64:3000
+5. Verifica `GET /health` en la Elastic IP y conserva la URL como evidencia de la entrega.
 
 ### Rol IAM para GitHub OIDC
-El rol debe tener una trust policy para `token.actions.githubusercontent.com` con la condición `repo:Moonlighpoio/perfumes-api:ref:refs/heads/main` y permisos `ssm:SendCommand`, `ssm:GetCommandInvocation`, `ssm:DescribeInstanceInformation`.
+El rol debe tener una trust policy para `token.actions.githubusercontent.com` con la condición `repo:wsk4/perfumes-api:ref:refs/heads/main` y permisos `ssm:SendCommand`, `ssm:GetCommandInvocation`, `ssm:DescribeInstanceInformation`.
 
 ## 🌿 Estrategia de ramificación (GitFlow)
 
@@ -272,11 +313,12 @@ Los merges a `develop` y `main` se realizan por Pull Request con checks obligato
 
 ```
 pnpm lint                 -> OK
-pnpm test:ci              -> 31/31 pruebas, 100% cobertura
+pnpm test:ci              -> 32/32 pruebas, 100% cobertura
 pnpm audit --prod         -> 0 vulnerabilidades
 docker build              -> OK (multi-stage, non-root)
 trivy image (HIGH/CRIT)   -> 0 vulnerabilidades corregibles
-docker compose up --wait  -> 3 réplicas de API + gateway + Redis healthy
+bash scripts/k8s-local.sh -> 3 pods API + Redis + Prometheus/Grafana/Kiali
+istioctl analyze          -> 0 errores de configuración
 smoke test                -> 11 verificaciones OK
 ```
 
@@ -286,11 +328,12 @@ smoke test                -> 11 verificaciones OK
 
 | Indicador | Peso | Evidencia |
 |---|---|---|
-| **IE1** Contenedores | 20% | `Dockerfile` multi-stage, `.dockerignore`, build en job `docker`, imagen non-root |
-| **IE2** Pruebas automatizadas | 20% | `tests/perfumes.test.js`, `jest.config.js`, umbral 90%, job `quality` |
-| **IE3** Seguridad y escalabilidad | 20% | `.github/dependabot.yml`, Snyk, CodeQL, Trivy, `pnpm audit`, gates con `needs`, réplicas y límites |
-| **IE4** Despliegue y trazabilidad | 20% | Job `deploy`, entornos staging/production, tag SHA, GHCR, smoke tests, release |
-| **IE5** Orquestación | 20% | `compose.yaml` con 3 réplicas, Nginx, Redis compartido, red interna, healthchecks, hardening |
+| **IE1** Monitoreo y logging | 20% | Istio + Prometheus + Grafana + Kiali, access logs Envoy, `istioctl analyze` |
+| **IE2** Orquestación en la nube | 20% | Kubernetes (k3s/kind), `src/k8s/`, despliegue automatizado vía pipeline y SSM |
+| **IE3** Dashboards y métricas | 10% | Grafana (requests, errores, CPU/mem) + Step Summary (tiempo de despliegue, cobertura) |
+| **IE4** Documentación | 10% | `docs/ep3-observabilidad.md`, README, diagramas y criterios de decisión |
+| **IE5** Políticas de cumplimiento | 20% | mTLS STRICT, AuthorizationPolicy default-deny, Trivy, Snyk, branch protection |
+| **IE6** Validación que detiene el pipeline | 20% | Gates bloqueantes: cobertura, Trivy, `pnpm audit`, Snyk, `istioctl analyze` |
 
 ---
 
@@ -306,7 +349,7 @@ smoke test                -> 11 verificaciones OK
 
 ## 🤖 Uso de Inteligencia Artificial
 
-Se utilizó IA (OpenCode) como apoyo para: estructura del pipeline, Dockerfile, configuración de Compose, pruebas automatizadas y redacción técnica del README. **Todo el contenido fue revisado y validado por el equipo.**
+Se utilizó IA (OpenCode) como apoyo para: estructura del pipeline, Dockerfile, configuración de Kubernetes e Istio, pruebas automatizadas y redacción técnica del README. **Todo el contenido fue revisado y validado por el equipo.**
 
 La IA **no** se usó para redactar conclusiones, justificaciones técnicas ni reflexiones individuales: esas secciones fueron escritas por el equipo. Las **reflexiones individuales** deben ser redactadas por cada integrante sin apoyo de IA, según la pauta del curso. Referencia: <https://bibliotecas.duoc.cl/ia>.
 
@@ -317,13 +360,13 @@ La IA **no** se usó para redactar conclusiones, justificaciones técnicas ni re
 > ⚠️ Cada integrante debe completar su reflexión personal (sin IA): qué aprendió, qué aportó al proyecto y qué dificultad enfrentó.
 
 ### Integrante 1 — Matias Gonzalez V. (@wsk4)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ### Integrante 2 — Renato Barriga P. (@Moonlighpoio)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ### Integrante 3 — Cristobal Veliz L. (@Veliz1232)
-_Pendiente de completar por el integrante (sin IA)._
+
 
 ---
 

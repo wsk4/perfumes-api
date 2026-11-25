@@ -11,6 +11,9 @@ const COUNTER_KEY = 'perfumes:nextId';
 export class RedisStore {
     constructor(url) {
         this.redis = new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 3 });
+        // Sin listener, ioredis emite 'error' como excepción no capturada y el proceso muere
+        // mientras Redis aún no está listo (arranque de Kubernetes).
+        this.redis.on('error', error => console.error(`[redis] ${error.message}`));
     }
 
     async close() {
