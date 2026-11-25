@@ -47,6 +47,10 @@ k3s kubectl -n perfumes rollout status deployment/perfumes-api --timeout=300s
 for addon in prometheus grafana kiali; do
   k3s kubectl apply -f "${ISTIO_DIR}/samples/addons/${addon}.yaml"
 done
+k3s kubectl -n istio-system rollout status deployment/prometheus --timeout=180s
+k3s kubectl -n istio-system rollout status deployment/grafana --timeout=180s
+k3s kubectl -n istio-system rollout status deployment/kiali --timeout=180s
+bash scripts/import-grafana-dashboard.sh k3s
 
 # --- 6. Evidencias y verificación -------------------------------------------
 "${ISTIO_DIR}/bin/istioctl" analyze -n perfumes

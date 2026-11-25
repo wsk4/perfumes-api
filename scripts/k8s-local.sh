@@ -48,6 +48,7 @@ done
 kubectl -n istio-system rollout status deployment/prometheus --timeout=180s
 kubectl -n istio-system rollout status deployment/grafana --timeout=180s
 kubectl -n istio-system rollout status deployment/kiali --timeout=180s
+bash scripts/import-grafana-dashboard.sh kubectl
 
 # --- 5. Validación de la malla (gate bloqueante) -----------------------------
 "${ISTIO_DIR}/bin/istioctl" analyze -n perfumes

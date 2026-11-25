@@ -38,7 +38,7 @@ Componentes:
 | Service Mesh | Istio | `src/k8s/istio/gateway-virtualservice.yaml` |
 | Seguridad de malla | mTLS + AuthorizationPolicy | `src/k8s/istio/security.yaml` |
 | Métricas | Prometheus | addon oficial de Istio |
-| Dashboards | Grafana + Kiali | addons oficiales de Istio |
+| Dashboards | Grafana + Kiali | addons oficiales de Istio + `observability/grafana/perfumes-ep3-dashboard.json` |
 | CI/CD | GitHub Actions | `.github/workflows/ep2.yml` |
 
 ## 3. Integración en el pipeline
@@ -67,6 +67,11 @@ Qué ocurre en cada etapa:
 
 ## 4. Métricas y dashboards (IE3)
 
+Además de los tableros estándar de Istio, el pipeline importa y verifica mediante la
+API de Grafana el dashboard personalizado **Perfumes API EP3 - Operacion y CI CD**.
+La importación es bloqueante: si Grafana no acepta el dashboard, el job `deploy`
+falla antes de completar el smoke test. El mismo script se ejecuta en kind y en EC2.
+
 | Métrica | Origen | Dónde se visualiza |
 |---|---|---|
 | Tiempo de despliegue | job `deploy` (segundos) | GitHub Actions → Step Summary |
@@ -76,6 +81,10 @@ Qué ocurre en cada etapa:
 | Errores 5xx | `istio_requests_total{response_code=~"5.."}` | Grafana / Kiali |
 | Disponibilidad | `up` + readiness probes | Grafana / Kiali |
 | Topología y latencia entre servicios | Telemetría Envoy | Kiali (grafo de servicios) |
+
+El dashboard personalizado muestra solicitudes por segundo, errores 5xx, CPU y
+memoria de los pods. El Step Summary del mismo run conserva tiempo de despliegue y
+cobertura, vinculados al SHA e imagen inmutable para completar la trazabilidad CI/CD.
 
 Consulta de errores en Prometheus:
 
@@ -113,6 +122,8 @@ istioctl dashboard kiali
 istioctl dashboard grafana
 istioctl dashboard prometheus
 ```
+
+El dashboard propio queda disponible en Grafana con el UID `perfumes-ep3`.
 
 Despliegue en EC2:
 

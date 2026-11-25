@@ -1,0 +1,98 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "perfumes-ep3",
+    "title": "Perfumes API EP3 - Operacion y CI CD",
+    "tags": ["ep3", "perfumes-api", "observability"],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "30s",
+    "time": { "from": "now-6h", "to": "now" },
+    "templating": {
+      "list": [
+        {
+          "name": "datasource",
+          "type": "datasource",
+          "query": "prometheus",
+          "current": { "text": "Prometheus", "value": "Prometheus" },
+          "label": "Fuente de metricas"
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Solicitudes por segundo",
+        "type": "timeseries",
+        "datasource": "$datasource",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(istio_requests_total{reporter=\"destination\",destination_service_name=\"perfumes-api\"}[1m]))",
+            "legendFormat": "rps"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+      },
+      {
+        "id": 2,
+        "title": "Errores HTTP 5xx",
+        "type": "timeseries",
+        "datasource": "$datasource",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(istio_requests_total{reporter=\"destination\",destination_service_name=\"perfumes-api\",response_code=~\"5..\"}[5m]))",
+            "legendFormat": "errores 5xx por segundo"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+      },
+      {
+        "id": 3,
+        "title": "CPU de los pods de la API",
+        "type": "timeseries",
+        "datasource": "$datasource",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"perfumes\",pod=~\"perfumes-api-.*\",container=\"api\"}[5m]))",
+            "legendFormat": "cores usados"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "cores" }, "overrides": [] }
+      },
+      {
+        "id": 4,
+        "title": "Memoria de los pods de la API",
+        "type": "timeseries",
+        "datasource": "$datasource",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "sum(container_memory_working_set_bytes{namespace=\"perfumes\",pod=~\"perfumes-api-.*\",container=\"api\"})",
+            "legendFormat": "memoria"
+          }
+        ],
+        "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] }
+      },
+      {
+        "id": 5,
+        "title": "Trazabilidad CI CD",
+        "type": "text",
+        "gridPos": { "h": 6, "w": 24, "x": 0, "y": 16 },
+        "options": {
+          "mode": "markdown",
+          "content": "## Metricas de entrega\n\n- **Tiempo de despliegue** y **cobertura de pruebas** se publican en el Step Summary de cada run de GitHub Actions.\n- Esta vista concentra las metricas operacionales: solicitudes, errores, CPU y memoria.\n- Usa el SHA del run y el tag inmutable de la imagen para correlacionar una degradacion con el despliegue que la introdujo."
+        }
+      }
+    ]
+  },
+  "folderId": 0,
+  "overwrite": true
+}
