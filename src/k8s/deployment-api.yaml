@@ -29,6 +29,7 @@ spec:
         app: perfumes-api
         version: v2
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
       containers:
@@ -51,9 +52,11 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+              ephemeral-storage: 256Mi
             requests:
               cpu: 100m
               memory: 64Mi
+              ephemeral-storage: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -99,6 +102,7 @@ spec:
       labels:
         app: redis
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: redis
           image: redis:7.4-alpine
@@ -111,9 +115,11 @@ spec:
             limits:
               cpu: 250m
               memory: 128Mi
+              ephemeral-storage: 128Mi
             requests:
               cpu: 50m
               memory: 32Mi
+              ephemeral-storage: 32Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

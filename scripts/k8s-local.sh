@@ -15,7 +15,7 @@ ISTIO_DIR="istio-${ISTIO_VERSION}"
 
 # --- 1. Cluster kind ---------------------------------------------------------
 if ! command -v kind >/dev/null 2>&1; then
-  curl -fsSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -o /tmp/kind
+  curl --proto '=https' --tlsv1.2 -fsSL "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64" -o /tmp/kind
   chmod +x /tmp/kind
   sudo mv /tmp/kind /usr/local/bin/kind
 fi
@@ -25,8 +25,8 @@ fi
 kind load docker-image "${IMAGE}" --name "${CLUSTER}"
 
 # --- 2. Istio ----------------------------------------------------------------
-if [ ! -x "${ISTIO_DIR}/bin/istioctl" ]; then
-  curl -fsSL "https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz" | tar xz
+if [[ ! -x "${ISTIO_DIR}/bin/istioctl" ]]; then
+  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/istio/istio/releases/download/${ISTIO_VERSION}/istio-${ISTIO_VERSION}-linux-amd64.tar.gz" | tar xz
 fi
 "${ISTIO_DIR}/bin/istioctl" install -y --set profile=default
 
@@ -57,7 +57,7 @@ bash scripts/import-grafana-dashboard.sh kubectl
 kubectl -n istio-system port-forward svc/istio-ingressgateway 3000:80 >/tmp/istio-port-forward.log 2>&1 &
 PF_PID=$!
 for _ in $(seq 1 30); do
-  curl -sf http://localhost:3000/health >/dev/null 2>&1 && break
+  curl -sf http://localhost:3000/health >/dev/null 2>&1 && break # NOSONAR: loopback-only port-forward without TLS
   sleep 2
 done
 node scripts/smoke-test.mjs
